@@ -237,6 +237,107 @@ Returns recent user activity.
 ]
 ```
 
+### GET `/api/user/commission`
+
+Returns the user's maximum affiliate commission percentage.
+
+**Response:**
+```json
+{
+  "userId": "u_123",
+  "affiliateCommissionPercent": 15.0
+}
+```
+
+### GET `/api/affiliate`
+
+Returns a list of affiliate links for the authenticated user. Supports query parameters:
+
+- `platform` (optional): Filter by platform (e.g., "WhatsApp", "Instagram")
+- `status` (optional): Filter by status ("active" or "inactive")
+- `search` (optional): Search by URL, destination, or tags
+
+**Example:** `GET /api/affiliate?platform=Instagram&status=active`
+
+**Response:**
+```json
+[
+  {
+    "id": "1",
+    "userId": "u_123",
+    "url": "https://example.com/aff/u_123?p=wa&d=https%3A%2F%2Fexample.com%2Fproduct&e=1234567890&c=5",
+    "platform": "WhatsApp",
+    "destinationUrl": "https://example.com/product",
+    "expiryUnix": 1234567890,
+    "commissionPercent": 5,
+    "isActive": true,
+    "createdAt": 1234567890000,
+    "tags": "summer-campaign",
+    "conversions": 10,
+    "customPlatformName": null
+  }
+]
+```
+
+### POST `/api/affiliate`
+
+Creates a new affiliate link.
+
+**Request Body:**
+```json
+{
+  "platform": "WhatsApp",
+  "destinationUrl": "https://example.com/product",
+  "expiryUnix": 1234567890,
+  "commissionPercent": 5.0,
+  "tags": "summer-campaign",
+  "customPlatformName": null
+}
+```
+
+**Response:**
+Returns the created affiliate link object with generated URL (status 201).
+
+### GET `/api/affiliate/[id]`
+
+Returns a single affiliate link by ID.
+
+**Response:**
+```json
+{
+  "id": "1",
+  "userId": "u_123",
+  "url": "https://example.com/aff/u_123?p=wa&d=https%3A%2F%2Fexample.com%2Fproduct&e=1234567890&c=5",
+  "platform": "WhatsApp",
+  "destinationUrl": "https://example.com/product",
+  "expiryUnix": 1234567890,
+  "commissionPercent": 5,
+  "isActive": true,
+  "createdAt": 1234567890000,
+  "tags": "summer-campaign",
+  "conversions": 10
+}
+```
+
+### PUT `/api/affiliate/[id]`
+
+Updates an existing affiliate link.
+
+**Request Body:** Same as POST, all fields optional.
+
+**Response:** Returns the updated affiliate link object.
+
+### DELETE `/api/affiliate/[id]`
+
+Deletes an affiliate link.
+
+**Response:**
+```json
+{
+  "success": true
+}
+```
+
 ## 🚢 Deployment to Vercel
 
 ### Method A: Connect Git Provider (Recommended)
@@ -273,11 +374,12 @@ This method automatically deploys on every push to your repository.
 
 4. **Configure Environment Variables (if needed):**
    - In the project settings, go to **"Environment Variables"**
-   - Add any required variables (currently none needed for this project)
-   - Example variables you might need later:
-     - `NEXT_PUBLIC_API_BASE=https://api.example.com`
-     - `NEXTAUTH_SECRET=your-secret-key`
-     - `NEXTAUTH_URL=https://your-domain.vercel.app`
+   - Add any required variables:
+     - `NEXT_PUBLIC_AFFILIATE_BASE_URL` (optional): Base URL for affiliate links (defaults to current origin)
+     - Example variables you might need later:
+       - `NEXT_PUBLIC_API_BASE=https://api.example.com`
+       - `NEXTAUTH_SECRET=your-secret-key`
+       - `NEXTAUTH_URL=https://your-domain.vercel.app`
 
 5. **Deploy:**
    - Click **"Deploy"**
@@ -373,6 +475,15 @@ To add more tests:
 - ✅ API routes for profile and activity data
 - ✅ Edit profile modal with form validation
 - ✅ Logout functionality (button in header and `/logout` route)
+- ✅ **Affiliate URL management:**
+  - Multi-step modal form for adding/editing affiliate URLs
+  - Table view with filtering, sorting, and search
+  - Platform selection (WhatsApp, Facebook, Instagram, Telegram, Email, SMS, Custom)
+  - Expiry date calculation and display
+  - Commission validation against user's maximum commission
+  - Copy-to-clipboard functionality
+  - Edit and delete operations
+  - Toast notifications for user feedback
 - ✅ Accessible components (ARIA labels, keyboard navigation)
 - ✅ TypeScript for type safety
 - ✅ Component tests
@@ -381,11 +492,46 @@ To add more tests:
 ### Future Enhancements
 
 - Replace auth stub with NextAuth.js or Auth0
-- Connect to real backend API
+- Connect to real backend API (replace in-memory store with PostgreSQL/MongoDB)
+- Add pagination to affiliate URL table
+- Add bulk operations (delete multiple URLs)
+- Add export functionality (CSV/Excel)
 - Add more comprehensive error handling
 - Implement real-time updates (WebSockets)
-- Add data visualization for earnings
+- Add data visualization for earnings and conversions
 - Enhance accessibility (WCAG 2.1 AA compliance)
+
+### Design Notes
+
+#### Affiliate URL Feature
+
+**Assumptions made while implementing:**
+
+1. **URL Generation:** Affiliate URLs are generated in the format: `/aff/{userId}?p={platform}&d={destination}&e={expiry}&c={commission}`
+
+2. **Platform Mapping:** Platform short codes: WhatsApp→wa, Facebook→fb, Instagram→ig, Telegram→tg, Email→em, SMS→sms, Custom→custom
+
+3. **Expiry Calculation:** Months are calculated as 30 days each (approximate). In production, use a proper date library for accurate month calculations.
+
+4. **Time Left Display:** Shows "Days" for values >= 1 day, "Hours" for < 1 day, "Minutes" for < 1 hour
+
+5. **Status Determination:** Links are considered inactive if `expiryUnix` is in the past OR `isActive` is false
+
+6. **Table Columns:** Based on screenshot, columns are: Platform, URL, Time Left, Discount, Conversions, Status, Action
+
+7. **Mock Data:** Initial data matches the screenshot with sample WhatsApp, Instagram, and Facebook links with various expiry times and conversions
+
+8. **Data Persistence:** Uses in-memory store for demo. In production, replace `lib/affiliate-store.ts` with database queries (PostgreSQL, MongoDB, etc.)
+
+**Migration to Database:**
+
+To replace the in-memory store with a database:
+
+1. Install database client (e.g., `pg` for PostgreSQL or `mongodb` for MongoDB)
+2. Update `lib/affiliate-store.ts` to use database queries instead of in-memory array
+3. Update API routes if needed (they already use the store functions)
+4. Add environment variables for database connection
+5. Update README with database setup instructions
 
 ## 📄 License
 

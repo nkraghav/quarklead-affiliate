@@ -13,7 +13,7 @@ interface SidebarProps {
 const menuItems = [
   { href: '/profile', label: 'My Profile', icon: User },
   { href: '/affiliate-url', label: 'Affiliate URL', icon: Link2 },
-  { href: '/account-details', label: 'Account Details', icon: CreditCard },
+  { href: '/account-details', label: 'Bank details', icon: CreditCard },
   { href: '/earnings', label: 'My Earning', icon: TrendingUp },
   { href: '/offers', label: 'Offers', icon: Gift },
 ]
